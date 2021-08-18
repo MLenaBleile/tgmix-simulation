@@ -1,0 +1,239 @@
+\documentclass{article}\usepackage[]{graphicx}\usepackage[]{color}
+% maxwidth is the original width if it is less than linewidth
+% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage[sc]{mathpazo}
+\renewcommand{\sfdefault}{lmss}
+\renewcommand{\ttdefault}{lmtt}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=2,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+\hypersetup{
+ pdfstartview={XYZ null null 1}}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\topfraction}{0.8}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\floatpagefraction}{0.75}
+
+\makeatother
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+
+
+
+
+
+
+
+The results below are generated from an R script.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{mean.bias.g1} \hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"mean.bias.g1.txt"}\hlstd{)}
+\hlkwd{aggregate}\hlstd{(mean.bias.g1[,,])}
+\end{alltt}
+\begin{verbatim}
+##         Day 0      Day 4       Day 8      Day 12     Day 16     Day 20     Day 24
+## mi  0.0000000  0.0000000 -0.01420051 -0.06167379 -0.1650760 -0.2761723 -0.2876080
+## cc -0.3937543 -0.4315506 -0.42967419 -0.42341795 -0.4602569 -0.5512462 -0.4765457
+##        Day 28      Day 32       Day 36       Day 40
+## mi -0.1361989 -0.02713647 -0.003142147 -0.002163003
+## cc -0.2463194 -0.05471855 -0.004718692 -0.003910637
+\end{verbatim}
+\begin{alltt}
+\hlstd{mean.bias.g2} \hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"mean.bias.g2.txt"}\hlstd{)}
+\hlkwd{aggregate}\hlstd{(mean.bias.g2[,,])}
+\end{alltt}
+\begin{verbatim}
+##         Day 0      Day 4       Day 8     Day 12     Day 16     Day 20      Day 24
+## mi  0.0000000  0.0000000 -0.02209511 -0.1410773 -0.2939162 -0.2496243 -0.04182799
+## cc -0.3604307 -0.3981744 -0.39197410 -0.5003117 -0.5212280 -0.3818177 -0.07202145
+##          Day 28 Day 32 Day 36 Day 40
+## mi -0.001280760      0      0      0
+## cc -0.003573445      0      0      0
+\end{verbatim}
+\begin{alltt}
+\hlstd{linear.estimatest.g1}\hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"linear.estimates.g1.txt"}\hlstd{)}
+\hlkwd{apply}\hlstd{(linear.estimates.g1[,,],}\hlkwd{c}\hlstd{(}\hlnum{2}\hlstd{,}\hlnum{3}\hlstd{),mean,} \hlkwc{na.rm}\hlstd{=T)}
+\end{alltt}
+\begin{verbatim}
+##    intercept  estimate       mse
+## mi  5.295694 0.2079626 1.1983357
+## cv  5.208434 0.2400983 0.8516354
+\end{verbatim}
+\begin{alltt}
+\hlstd{linear.estimates.g2} \hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"linear.estimates.g2.txt"}\hlstd{)}
+\hlkwd{apply}\hlstd{(linear.estimates.g2[,,],}\hlkwd{c}\hlstd{(}\hlnum{2}\hlstd{,}\hlnum{3}\hlstd{),mean,} \hlkwc{na.rm}\hlstd{=T)}
+\end{alltt}
+\begin{verbatim}
+##    intercept  estimate       mse
+## mi  5.123031 0.3083185 1.2111139
+## cv  4.977773 0.3576684 0.8451593
+\end{verbatim}
+\begin{alltt}
+\hlkwd{aggregate}\hlstd{(}\hlkwd{dget}\hlstd{(}\hlstr{"pointwise.bias.g1.txt"}\hlstd{))}
+\end{alltt}
+\begin{verbatim}
+##      Day 0 Day 4         Day 8      Day 12      Day 16     Day 20     Day 24     Day 28
+## mi       0     0 -0.0142005139 -0.06167379 -0.16507601 -0.2761723 -0.2876080 -0.1361989
+## lvcf     0     0 -0.0002781522 -0.01299298 -0.05571205 -0.1995040 -0.4979628 -0.8853536
+##           Day 32       Day 36       Day 40
+## mi   -0.02713647 -0.003142147 -0.002163003
+## lvcf -1.33586723 -1.800931621 -2.278540732
+\end{verbatim}
+\begin{alltt}
+\hlstd{pointwise.bias.g1} \hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"pointwise.bias.g1.txt"}\hlstd{)}
+\hlkwd{apply}\hlstd{(pointwise.bias.g1,} \hlkwd{c}\hlstd{(}\hlnum{2}\hlstd{,}\hlnum{3}\hlstd{), mean,} \hlkwc{na.rm}\hlstd{=T)}
+\end{alltt}
+\begin{verbatim}
+##      Day 0 Day 4        Day 8      Day 12     Day 16     Day 20     Day 24     Day 28
+## mi       0     0 -0.030803718 -0.13378263 -0.3580825 -0.6069721 -0.7669547 -0.7651623
+## lvcf     0     0 -0.000603367 -0.02818433 -0.1208504 -0.4327635 -1.0801797 -1.9205067
+##          Day 32    Day 36    Day 40
+## mi   -0.9045491 -1.571074 -1.081501
+## lvcf -2.8977597 -3.906576 -4.942605
+\end{verbatim}
+\begin{alltt}
+\hlstd{pointwise.bias.g2} \hlkwb{=} \hlkwd{dget}\hlstd{(}\hlstr{"pointwise.bias.g2.txt"}\hlstd{)}
+\hlkwd{apply}\hlstd{(pointwise.bias.g2,} \hlkwd{c}\hlstd{(}\hlnum{2}\hlstd{,}\hlnum{3}\hlstd{), mean,} \hlkwc{na.rm}\hlstd{=T)}
+\end{alltt}
+\begin{verbatim}
+##      Day 0 Day 4        Day 8     Day 12     Day 16    Day 20    Day 24     Day 28
+## mi       0     0 -0.047928655 -0.3060246 -0.6445530 -0.904436 -1.100736 -0.6403801
+## lvcf     0     0 -0.007777012 -0.1379127 -0.6810427 -1.826492 -3.206055 -4.6334375
+##         Day 32    Day 36    Day 40
+## mi         NaN       NaN       NaN
+## lvcf -6.022223 -7.394506 -8.785047
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+The R session information (including the OS info, R version and all
+packages used):
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{sessionInfo}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+## R version 4.0.1 (2020-06-06)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 17763)
+## 
+## Matrix products: default
+## 
+## locale:
+## [1] LC_COLLATE=English_United States.1252  LC_CTYPE=English_United States.1252   
+## [3] LC_MONETARY=English_United States.1252 LC_NUMERIC=C                          
+## [5] LC_TIME=English_United States.1252    
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+## [1] lme4_1.1-26   Matrix_1.2-18
+## 
+## loaded via a namespace (and not attached):
+##   [1] minqa_1.2.4          colorspace_2.0-0     Rlab_2.15.1          ellipsis_0.3.1      
+##   [5] ggridges_0.5.2       brms_2.14.4          rsconnect_0.8.16     htmlTable_2.2.1     
+##   [9] markdown_1.1         base64enc_0.1-3      rstudioapi_0.13      rstan_2.21.2        
+##  [13] DT_0.16              fansi_0.4.1          mvtnorm_1.1-1        bridgesampling_1.0-0
+##  [17] codetools_0.2-16     splines_4.0.1        knitr_1.30           shinythemes_1.1.2   
+##  [21] bayesplot_1.7.2      projpred_2.0.2       Formula_1.2-4        jsonlite_1.7.1      
+##  [25] nloptr_1.2.2.2       broom_0.7.2          cluster_2.1.0        png_0.1-7           
+##  [29] broom.mixed_0.2.7    shiny_1.5.0          compiler_4.0.1       backports_1.2.0     
+##  [33] assertthat_0.2.1     fastmap_1.0.1        cli_2.2.0            later_1.1.0.1       
+##  [37] htmltools_0.5.0      prettyunits_1.1.1    tools_4.0.1          igraph_1.2.6        
+##  [41] coda_0.19-4          gtable_0.3.0         glue_1.4.2           reshape2_1.4.4      
+##  [45] dplyr_1.0.2          merTools_0.5.2       tinytex_0.27         V8_3.4.0            
+##  [49] Rcpp_1.0.5           vctrs_0.3.5          nlme_3.1-148         iterators_1.0.13    
+##  [53] crosstalk_1.1.0.1    xfun_0.19            stringr_1.4.0        ps_1.5.0            
+##  [57] mime_0.9             miniUI_0.1.1.1       lifecycle_0.2.0      gtools_3.8.2        
+##  [61] statmod_1.4.35       MASS_7.3-51.6        zoo_1.8-8            scales_1.1.1        
+##  [65] colourpicker_1.1.0   promises_1.1.1       Brobdingnag_1.2-6    parallel_4.0.1      
+##  [69] inline_0.3.17        shinystan_2.5.0      RColorBrewer_1.1-2   gamm4_0.2-6         
+##  [73] curl_4.3             gridExtra_2.3        ggplot2_3.3.2        loo_2.4.1           
+##  [77] StanHeaders_2.21.0-6 rpart_4.1-15         latticeExtra_0.6-29  stringi_1.5.3       
+##  [81] highr_0.8            dygraphs_1.1.1.6     foreach_1.5.1        blme_1.0-5          
+##  [85] checkmate_2.0.0      boot_1.3-25          pkgbuild_1.1.0       rlang_0.4.9         
+##  [89] pkgconfig_2.0.3      matrixStats_0.57.0   evaluate_0.14        arm_1.11-2          
+##  [93] lattice_0.20-41      purrr_0.3.4          rstantools_2.1.1     htmlwidgets_1.5.3   
+##  [97] processx_3.4.5       tidyselect_1.1.0     plyr_1.8.6           magrittr_2.0.1      
+## [101] R6_2.5.0             generics_0.1.0       Hmisc_4.5-0          foreign_0.8-80      
+## [105] pillar_1.4.7         withr_2.3.0          mgcv_1.8-31          xts_0.12.1          
+## [109] nnet_7.3-14          survival_3.1-12      abind_1.4-5          tibble_3.0.4        
+## [113] crayon_1.3.4         jpeg_0.1-8.1         grid_4.0.1           data.table_1.13.6   
+## [117] callr_3.5.1          threejs_0.3.3        digest_0.6.27        xtable_1.8-4        
+## [121] tidyr_1.1.2          httpuv_1.5.4         RcppParallel_5.0.2   stats4_4.0.1        
+## [125] munsell_0.5.0        shinyjs_2.0.0
+\end{verbatim}
+\begin{alltt}
+\hlkwd{Sys.time}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+## [1] "2021-08-17 23:49:57 CDT"
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+
+\end{document}

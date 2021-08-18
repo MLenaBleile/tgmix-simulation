@@ -1,0 +1,48 @@
+---
+title: "Simulation Results"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Results
+Recall, we simulated data from two mixed model parameterizations, both linear on the log scale. We generated two groups so that we could compare the difference in effects between groups, as estimated by the main method that we are using to analyze the data (ANOVA). 
+
+For the complete-case dataset, we computed the bias on the means for each group rather than the individual data points, because the complete-case analysis deletes subjects rather than simulating new points. For each of the 1,000 simulated datasets, we computed time point means using CC, and compared them to the corresponding means of the true, uncensored dataset. 
+
+```{r cars}
+mean.bias.g1 = dget("mean.bias.g1.txt")
+apply(mean.bias.g1, c(2,3), mean, na.rm=T)
+
+mean.bias.g2 = dget("mean.bias.g2.txt")
+apply(mean.bias.g2[,,1:8], c(2,3), mean, na.rm=T)
+```
+We calculated bias of prediction on the LVCF- and MI-completed data sets by subtracting the true, latent values that were synthetically censored by dropout from the imputed values.  
+
+```{r pointwise}
+pointwise.bias.g1 = dget("pointwise.bias.g1.txt")
+apply(pointwise.bias.g1, c(2,3), mean, na.rm=T)
+pointwise.bias.g2 = dget("pointwise.bias.g2.txt")
+apply(pointwise.bias.g2[,,1:8], c(2,3), mean, na.rm=T)
+```
+
+Recall that the data were generated from a linear mixed model (log scale) with a random effect for Animal. The true intercept is 5. The true coefficient (effect) on group 1 is 0.25, and the true effect in group 2 is 0.35.
+
+```{r linear}
+linear.estimates.g1= dget("linear.estimates.g1.txt")
+apply(linear.estimates.g1[,,],c(2,3),mean, na.rm=T)
+
+linear.estimates.g2 = dget("linear.estimates.g2.txt")
+apply(linear.estimates.g2[,,],c(2,3),mean, na.rm=T)
+```
+
+Finally, we performed the main analysis using each method to compare the differences. We are interested in the difference in effects between the two groups, which we are estimating using an ANOVA model. I recorded the main effect for each simulation iteration. As you can see the results using each method look very different from one another.
+
+
+```{r main}
+main.analysis.gp.diff= dget("main.analysis.gp.diff.txt")
+apply(main.analysis.gp.diff,2,mean, na.rm=T)
+
+```

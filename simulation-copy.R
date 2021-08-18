@@ -1,0 +1,565 @@
+
+#############################################
+##procmixedfunctions.R                     ##
+##Tumor Growth Data, Multiple Imputation   ##
+##MaryLena Bleile, 12 December 2020        ## 
+#############################################
+
+###utility functions
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+rm.na=function(x){if(is.na(mean(x))){return(x[-which(is.na(x))])}else{return(x)}}
+filter_all_na = function(data.orig){
+  data.orig = as.data.frame(Filter(function(x)!all(is.na(x)), data.orig))
+  data.orig = data.orig[rowSums(is.na(data.orig)) != ncol(data.orig), ]
+  data.orig
+}
+
+
+#'tgmix_imputation
+#'takes a data frame with a categorical columns corresponding to
+#'animal id and optionally a column corresponding to treatment group. can specify animal column with option animalcol
+#'treatment group col specified by tgcol
+#'optional vector of time points "day"; otherwise timepoints are assumed to be 
+#' 1 through length(tumor observations)
+#'produces filled-in dataset and optionally plots results (plots=T)
+#' can specify number of samples (nsamp)
+#' works for a single treatment group. need to apply by group for complete dataset.
+#' 
+#'
+#' This function loads a file as a matrix. It assumes that the first column
+#' contains the rownames and the subsequent columns are the sample identifiers.
+#' Any rows with duplicated row names will be dropped with the first one being
+#' kepted.
+#'
+#' @param one.group data frame with a categorical columns corresponding to animal id and optionally a column corresponding to treatment group.
+#' @return options = nsamp versions of the impured dataset with optional plots
+#' @export
+
+tgmix_imputation = function(one.group, day=NA, plots=T,animalcol=1, nsamp=20, chains=4, cores=4,iter=2000,warmup=500){
+  kcat=1
+  if(sum(is.na(one.group))==0){
+    print("No missing observations, returning original dataset")
+    one.group = cbind(data.frame(imputation=rep(1, nrow(one.group))), one.group)
+    return(one.group)
+  }
+  
+  one.group = one.group[,colSums(is.na(one.group))<nrow(one.group)]
+  
+  ##single imputation function
+  ## Function to perform a single round of sampled imputations for a dataset (df)
+  ## impnum:imputation iteration number
+  ##df : dataframe with observed/missing values, 
+  ## samples: dataframe with least squares means(lsm) and covariance parameters (covp) from mixed model 
+  #tgcol: treatment group column
+  impute = function(impnum, data,samples,animalcol=1){
+    for(a in data$Animal){
+      #get index of desired animal
+      aidx = which(data$Animal==a)
+      #find which values are missing; obtain their indices
+      naidx = which(is.na(data[which(data$Animal==a),-c(animalcol)]))
+      #get a dataframe with just the least squares means
+      midx=which(substr(colnames(samples), 1,3)=="lsm")
+      meanss = samples[,midx]
+      if(length(naidx>0)){
+        #create diagonal and off-diagonal matrix elements of the partitioned Sigma matrix (corresponding to known vs unknown obs)
+        sig.offdiag = matrix(data=rep(samples$covp1[impnum],length(naidx)*(ncol(meanss)-length(naidx))), ncol=length(naidx))
+        p1 = ncol(meanss) - length(naidx)
+        p2=length(naidx)
+        sig.11 = matrix(data=rep(samples$covp1[impnum], p1*p1), ncol=p1)
+        diag(sig.11) = rep(samples$covp2[impnum]+samples$covp1[impnum], p1)
+        sig.22 = matrix(data=rep(samples$covp1[impnum], p2*p2), ncol=p2)
+        diag(sig.22) = rep(samples$covp2[impnum]+samples$covp1[impnum], p2)
+        #get the desired parameters for the distribtution
+        muvec = meanss[impnum,naidx] +t(sig.offdiag)%*%solve(sig.11)%*%(as.matrix(as.numeric(meanss[impnum, -naidx])-as.numeric(data[aidx,-c(1, 1+naidx)])))
+        
+        sigmat = sig.22 - t(sig.offdiag)%*%solve(sig.11)%*%sig.offdiag
+        #generate obs from this distribution and impute
+        data[aidx,(naidx+1)] = MASS::mvrnorm(n=1, mu=as.numeric(muvec), Sigma=sigmat)
+        
+      }
+    }
+    data
+  }
+  
+  ###Function to generate samples using a mixed model
+  get_samples = function(one.group,days,animalcol=1){
+    names(one.group)[animalcol]="Animal"
+    data.long = reshape(one.group,
+                        direction="long",
+                        varying = list(names(one.group)[-c(animalcol)]),
+                        v.names="LTV",
+                        idvar= "Animal",
+                        times = days)
+    tgmix = data.long
+    #imp = mice::mice(tgmix)
+    ##fit using time as a categorical like before
+    tgmix_fit = brms::brm(data = tgmix,
+                          family = gaussian,
+                          formula = LTV ~ as.factor(time) + (1|Animal),
+                          iter = iter, warmup = warmup, chains = chains, cores = cores,
+                          control = list(adapt_delta = .975, max_treedepth = 20),
+                          seed = 190831)
+    samples_init = brms::posterior_samples(tgmix_fit, subset = sample(warmup:iter, nsamp))
+    get.mus1 = function(colnum){samples_init$b_Intercept+ samples_init[,colnum]}
+    post.mus = sapply(2:length(days), get.mus1)
+    post.mus = cbind(as.matrix(samples_init[,1]), post.mus)
+    colnames(post.mus) = paste("lsm",1:length(days),sep="")
+    
+    covpTime = (samples_init$sigma)^2
+    
+    
+    covpAnimal = (samples_init$sd_Animal__Intercept)^2
+    
+    samples = cbind(as.matrix(covpTime),as.matrix(covpAnimal),post.mus)
+    colnames(samples)[1:2] = c("covp2","covp1")
+    
+    samples = as.data.frame(samples)
+    mono.inc.idx= apply(samples[,-c(1,2)], 1, function(x)all(x==cummax(x)))
+    samples = samples[all()]
+    samples$sample = 1:nsamp
+    samples
+  }
+  
+  #rename names to be standardized
+  names(one.group)[animalcol]="Animal"
+  
+  ##get time indices
+  if(is.na(day)){day = 1:(ncol(one.group)-kcat)}
+  ##generate posterior samples
+  samples = get_samples(one.group,days=day)
+  #use function to do all of the imputation numbers
+  df.imputed =impute(1,one.group,samples)
+  df.imputed$imputation=1
+  
+  for(imp in unique(samples$sample)[-1]){
+    new= impute(imp,one.group,samples)
+    new$imputation=imp
+    df.imputed = rbind(df.imputed, new)
+  }
+  cols = ncol(df.imputed)
+  
+  df.imputed= df.imputed[,c("imputation",names(df.imputed)[-c(cols)] )]
+  
+  rownames(one.group)=one.group$Animal
+  if(plots==T){
+    
+    suppressWarnings(make_betterplots(one.group[,-c(animalcol)],df.imputed, day=day, animalcol=which(names(df.imputed)=="Animal")))
+  }
+  df.imputed
+}
+
+
+#'plotting function.
+#'takes two data frames: one "original" dataframe with animal names as rownames (and no extra columns), one imputed with two additional columns:
+#'imputation number("sample number") and Animal,
+#'The sample number column must be column number 1, but animal column is allowed to vary
+#'If there are m multiple imputations and n animals, the first data frame (one_group_orig) should have n rows
+#'and the imputed dataframe (one_group_imputed) should have n * m rows. e.g. 6 mice with 5 multiple imputations and d days 
+#' means one_group_orig is 6 x (d+1) and one_group_imputed is 35 x (d+2)
+#' @param one_group_orig original dataset with missing values with 
+#' @param one_group_imputed set of imputed versions of one_group_orig, compiled into a dataset with the first column corresponding to imutation number.
+make_betterplots = function(one_group_orig,one_group_imputed,day=NA, animalcol=2,plotname="Counterfactual Imputation Plot"){
+  kcat=length(c(animalcol))
+  if(suppressWarnings(is.na(day))){day=1:(ncol(one_group_imputed)-kcat-1)}
+  day.numeric=as.numeric(day)
+  cols = rainbow(nrow(one_group_orig))
+  plot(day.numeric, one_group_orig[1,], pch=16,main=plotname,xlim=c(min(day.numeric), max(day.numeric)+6),
+       ylim=c(min(one_group_orig, na.rm=T),max(apply(one_group_imputed[,-c(1,(animalcol))],2,as.numeric),na.rm = T)), xlab="time", ylab="LTV", type="n")
+  rect.corners = numeric()
+  for(i in 1:nrow(one_group_orig)){
+    one_mouse_imputed=one_group_imputed[as.character(one_group_imputed[,(animalcol)])==rownames(one_group_orig)[i],-c(1, animalcol)]
+    
+    if(!(length(rm.na(as.numeric(one_mouse_imputed[1,])))==length(rm.na(as.numeric(one_group_orig[i,]))))){
+      
+      # print(day.numeric)
+      points(day.numeric, one_group_orig[i,],pch=16)
+      lines(day.numeric, one_group_orig[i,],col=cols[i])
+      
+      mouse.known=rm.na(one_group_orig[i,])
+      mouseinit = one_group_orig[i,]
+      uknownidx=which(is.na(mouseinit))
+      mouse.unknown = as.matrix(one_mouse_imputed[,uknownidx[uknownidx<=ncol(one_mouse_imputed)]])
+      day.unknown=day.numeric[uknownidx]
+      med=apply(mouse.unknown, 2, median, na.rm=T)
+      iqr = apply(mouse.unknown,2, IQR, na.rm=T)
+      avg = apply(mouse.unknown,2,mean,na.rm=T)
+      sd = apply(mouse.unknown,2,sd,na.rm=T) 
+      imputeidx = which(!is.na(avg))
+      for(j in 1:length(avg)){
+        x.prop = day.unknown[j]
+        while (x.prop %in% rect.corners) {
+          x.prop=x.prop+.8
+        }
+        arrows(x.prop,y0=avg[j]-3*sd[j],y1=avg[j]+3*sd[j],angle=90, code=3, lty=2)
+        rect(x.prop-0.4,med[j]-0.5*iqr[j],x.prop+0.4,med[j]+0.5*iqr[j], col=cols[i])
+        rect.corners = c(rect.corners,x.prop)
+        points(x.prop, avg[j], pch=8)
+        
+      }
+      lines(day.numeric,c(mouse.known, avg), col=cols[i])
+    }
+  }
+}
+
+set.seed(1998)
+
+lvcf = function(one.group){
+  lastvals=c()
+  missidx=c()
+  for(r in 1:nrow(one.group)){
+    row=one.group[r,]
+    lastidx = length(row[!is.na(row)])
+    
+    #print(lastidx)
+    if(lastidx<length(row)){
+      lastvals[length(lastvals)+1]=lastidx
+      missidx[length(missidx)+1]=r
+      print(r)
+      row[(lastidx+1):length(row)] = row[lastidx]
+    }
+    one.group[r,]=row
+  }
+  return(list(one.group,missidx, lastvals))
+}
+
+rho.func = function(z){
+  num =  exp(2*z)-1
+  den = exp(2*z)+1
+  num/den
+}
+
+
+generate.one = function(time, theta){
+  b0 = theta[1]
+  b = theta[2]
+  alphai = rnorm(1, sd=theta[3])
+  eij = rnorm(length(time), sd=theta[4])
+  alphai + b0 + time*b + eij
+  
+}
+
+#install.packages("Rlab")
+
+#install.packages("merTools")
+
+##impose dropout
+prob.drop = Vectorize(function(data.vec, beta, k){
+  unlogit( (beta[4]+beta[1]*k+beta[2]*data.vec[k] + beta[3]*data.vec[k-1]))
+}, vectorize.args = "k")
+
+unlogit = function(x){return(exp(x)/(1+exp(x)))}
+
+dropout.process = function(data.vec,beta){
+  data.vec=as.numeric(data.vec)
+  drop.probs = prob.drop(data.vec, beta, 2:length(data.vec))
+  #print(drop.probs)
+  drop = 0
+  time=2
+  
+  while(drop==0&time<=length(data.vec)){
+    drop = Rlab::rbern(1, prob=drop.probs[time-1])
+    time=time+1
+  }
+  if(time<=length(data.vec)){data.vec[(time-1):length(data.vec)]=NA}
+  data.vec
+}
+
+make_cc_dataset=function(data){
+  dropcols =c()
+  for(c in 1:ncol(data)){
+    if(sum(!is.na(data[,c]))==0){
+      dropcols = c(dropcols, c)
+    }
+  }
+  data=data[, setdiff(1:ncol(data), dropcols)]
+  out = data
+  for(row in 1:nrow(data)){
+    if(sum(is.na(data[row,]))>0){
+      out[row,] = NA
+    }
+  }
+  out = as.data.frame(out)
+  out
+}
+
+make_cv_dataset = function(data){
+  keepcols =c()
+  for(c in 1:ncol(data)){
+    if(sum(is.na(data[,c]))==0){
+      keepcols = c(keepcols, c)
+    }
+  }
+  data=data[, keepcols]
+  data
+}
+
+get_mi_bias= function(mi.data, true.data){
+  bias.vec = rep(0, ncol(true.data))
+  for(imputation in unique(mi.data$imputation)){
+    one.mi.dataset = mi.data[mi.data$imputation==imputation,-c(1,2)]
+    one.mi.bias = one.mi.dataset - true.data
+    bias.vec = bias.vec + colMeans(one.mi.bias)
+  }
+  bias.vec=bias.vec/max(mi.data$imputation)
+  bias.vec
+}
+
+fit_lmer = function(cvdataset.g1){
+  cvdataset.g1 = as.data.frame(cvdataset.g1)
+  cvdataset.g1$Animal = 1:nrow(cvdataset.g1)
+  
+  cv_long.g1 = reshape(cvdataset.g1, 
+                       direction = "long",
+                       varying = list(names(cvdataset.g1)[-c(ncol(cvdataset.g1))]),
+                       v.names = "Value",
+                       idvar = "Animal",            
+                       timevar = "Day",
+                       times = time[1:(ncol(cvdataset.g1)-1)])
+  
+  cv.fit.g1 = lme4::lmer(Value ~ Day+ (1| Animal), data=cv_long.g1)
+  mse = merTools::RMSE.merMod(cv.fit.g1)
+  list(cv.fit.g1, mse)}
+
+fit_lmer_multiple = function(midataset.g1){
+  for(imputation in 1:max(midataset.g1$imputation)){
+    one.mi.dataset = midataset.g1[midataset.g1$imputation==imputation,]
+    #print(imputation)
+    if(imputation==1){
+      effects = as.numeric(lme4::fixef(fit_lmer(one.mi.dataset[,-c(1,2)])[[1]]))
+      mse = fit_lmer(one.mi.dataset[,-c(1,2)])[[2]]}
+    else{
+      new_effects = lme4::fixef(fit_lmer(one.mi.dataset[,-c(1,2)])[[1]])
+      effects[1] = effects[1] + as.numeric(new_effects)[1]
+      effects[2] = effects[2] + as.numeric(new_effects)[2]
+      #cat(new_effects[2],effects[2], new_effects[2]+effects[2])
+      new_mse = fit_lmer(one.mi.dataset[,-c(1,2)])[[2]]
+      #print(new_mse)
+      mse = mse + new_mse
+    }
+    
+  }
+  effects=effects/max(midataset.g1$imputation)
+  mse = mse/max(midataset.g1$imputation)
+  list(effects, mse)}
+
+
+
+library(lme4)
+
+M=1000
+n=5
+np1 = n+1
+twon = 2*n
+time=seq(0,40,by=4)
+theta = c(5,0.25,1,1)
+theta_a = c(5,0.35, 1,1)
+set.seed(1998)
+
+mouse.sim = array(data=NA, dim=c(M,n*2, length(time)+1))
+
+for(m in 1:M){
+  for(i in 1:n){
+    mouse.sim[m,i,] = c("group 1", generate.one(time, theta))
+  }
+  for(i in np1:twon){
+    mouse.sim[m, i,] = c("group 2",generate.one(time, theta_a))
+  }
+}
+
+#initialize containers for values
+T=length(time)
+pointwise.bias.g1 = array(dim=c(M, 2, T), dimnames=list(NULL, c("mi","lvcf"), paste("Day",time)))
+pointwise.bias.g2 = array(dim=c(M, 2, T), dimnames=list(NULL, c("mi","lvcf"), paste("Day",time)))
+mean.bias.g1 =array(dim=c(M, 2, T), dimnames=list(NULL, c("mi","cc"), paste("Day",time)))
+mean.bias.g2 = array(dim=c(M, 2, T), dimnames=list(NULL, c("mi","cc"), paste("Day",time)))
+linear.estimates.g1 = array(dim=c(M, 2, 3), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "mse")))
+linear.estimates.g2 = array(dim=c(M, 2, 3), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "mse")))
+
+main.analysis.gp.diff = data.frame(lvcf=NA, cc=NA, cv=NA, mi=NA)
+
+
+
+get_main_analysis = function(df){
+  
+  df= as.data.frame(df)
+  df$Animal=1:nrow(df)
+  df_long = reshape(df, 
+                    direction = "long",
+                    varying = list(names(df)[-c(ncol(df))]),
+                    v.names = "LTV",
+                    idvar = c("Animal"),            
+                    timevar = "Day",
+                    times = time[1:(ncol(df)-1)])
+  df_long$group = 1
+  df_long$group[df_long$Animal>5] = 2
+  df_long$Animal=as.factor(df_long$Animal)
+  df_long$group = as.factor(df_long$group)
+  df_long$Day = as.factor(df_long$Day)
+  #print(df_long)
+  fit_aov= aov(LTV~ group*Day + Error(Animal), data=df_long)
+  #print(summary(fit_aov))
+  fit_aov
+  
+}
+
+simulation_iteration = as.integer(read.table("simulation_iteration.txt"))
+
+if(simulation_iteration>1){
+  pointwise.bias.g1 = dget("pointwise.bias.g1.txt")
+  pointwise.bias.g2 = dget("pointwise.bias.g2.txt")
+  mean.bias.g1 = dget("mean.bias.g1.txt")
+  mean.bias.g2 = dget("mean.bias.g2.txt")
+  linear.estimates.g1 = dget("linear.estimates.g1.txt")
+  linear.estimates.g2 = dget("linear.estimates.g2.txt")
+  main.analysis.gp.diff = dget("main.analysis.gp.diff.txt")
+}
+
+M=10
+for(m in simulation_iteration:M){
+  one.dataset=mouse.sim[m,,]
+  beta.v = c(0.1,1,2,-30)
+  data_with_dropout = t(apply(one.dataset[,-c(1)], 1,dropout.process, beta=beta.v))
+  while(sum(is.na(data_with_dropout[1:n,]))==0 | sum(is.na(data_with_dropout[-seq(1,n),]))==0){
+    data_with_dropout = t(apply(one.dataset[,-c(1)], 1,dropout.process, beta=beta.v))
+  }
+  ccdataset.g1 = make_cc_dataset(data_with_dropout[1:n,colSums(is.na(data_with_dropout[1:n,]))<n])
+  data_with_dropout[-seq(1,n),]
+  ccdataset.g2 = make_cc_dataset(data_with_dropout[-seq(1,n),colSums(is.na(data_with_dropout[-seq(1,n),]))<n])
+  
+  lvcfdataset.g1 = lvcf(data_with_dropout[1:n,])
+  lvcfdataset.g2 = lvcf(data_with_dropout[-seq(1,n),])
+  
+  cvdataset.g1 = make_cv_dataset(data_with_dropout[1:n,])
+  cvdataset.g2= make_cv_dataset(data_with_dropout[-seq(1,n),])
+  
+  data_for_mi=filter_all_na(as.data.frame(data_with_dropout))
+  data_for_mi$Animal=1:nrow(data_with_dropout)
+  colnames(data_for_mi)[-c(ncol(data_for_mi))] = paste("Day", time, sep="")[1:(ncol(data_for_mi)-1)]
+  data_for_mi=data_for_mi[,c(ncol(data_for_mi),1:(ncol(data_for_mi)-1))]
+  
+  midataset.g1 = tgmix_imputation(data_for_mi[1:n,colSums(is.na(data_for_mi[1:n,]))<n], plots=F)
+  midataset.g2 = tgmix_imputation(data_for_mi[-seq(1,n),colSums(is.na(data_for_mi[-seq(1,n),]))<n], plots=F)
+  
+  trueMeans.g1 = colMeans(as.data.frame(t(apply(one.dataset[1:n, -c(1)],1,as.numeric))))
+  trueMeans.g2 = colMeans(as.data.frame(t(apply(one.dataset[-seq(1,n), -c(1)],1,as.numeric))))
+  ccMeans.g1 = colMeans(ccdataset.g1[rowSums(is.na(ccdataset.g1))<1,])
+  ccMeans.g2 = colMeans(ccdataset.g2[rowSums(is.na(ccdataset.g2))<1,])
+  tgmixMeans.g1 = colMeans(midataset.g1[,-c(1:2)])
+  tgmixMeans.g2 = colMeans(midataset.g2[,-c(1:2)])
+  tgmixMeanBias.g1 = tgmixMeans.g1 - trueMeans.g1[1:length(tgmixMeans.g1)]
+  tgmixMeanBias.g2 = tgmixMeans.g2 - trueMeans.g2[1:length(tgmixMeans.g2)]
+  ccMeanBias.g1 = ccMeans.g1 - trueMeans.g1[1:length(ccMeans.g1)]
+  ccMeanBias.g2 = ccMeans.g2 - trueMeans.g2[1:length(ccMeans.g2)]
+  
+  mean.bias.g1[m,'cc',1:length(ccMeanBias.g1)] = ccMeanBias.g1
+  mean.bias.g1[m, 'mi',1:length(tgmixMeanBias.g1)] = tgmixMeanBias.g1
+  mean.bias.g2[m,'cc',1:length(ccMeanBias.g2)] = ccMeanBias.g2
+  
+  mean.bias.g2[m, 'mi',1:length(tgmixMeanBias.g2)] = tgmixMeanBias.g2
+  
+  
+  
+  
+  truedataset.g1= as.data.frame(t(apply(one.dataset[1:n, -c(1)],1,as.numeric)))
+  truedataset.g2 = t(apply(one.dataset[-seq(1,n), -c(1)],1,as.numeric))
+  lvcfBias.g1 = colMeans(as.data.frame(lvcfdataset.g1[[1]]) - truedataset.g1)
+  lvcfBias.g2 = colMeans(as.data.frame(lvcfdataset.g2[[1]]) - truedataset.g2)
+  
+  
+  lastcol.g1 =ncol(midataset.g1) - 2
+  lastcol.g2 =ncol(midataset.g2)-2
+  miBias.g1 = get_mi_bias(midataset.g1, truedataset.g1[,1:lastcol.g1])
+  miBias.g2 = get_mi_bias(midataset.g2, truedataset.g2[,1:lastcol.g2])
+  
+  pointwise.bias.g1[m,'mi',1:length(miBias.g1)] = miBias.g1
+  pointwise.bias.g2[m, 'mi',1:length(miBias.g2)] = miBias.g2
+  
+  pointwise.bias.g1[m,'lvcf', 1:length(lvcfBias.g1)] = lvcfBias.g1
+  pointwise.bias.g2[m, 'lvcf',1:length(lvcfBias.g2)] = lvcfBias.g2
+  
+  cv.fit.g2 = lme4::fixef(fit_lmer(cvdataset.g2)[[1]])
+  cv.mse.g2 = fit_lmer(cvdataset.g2)[[2]]
+  
+  mi.est.and.mse = fit_lmer_multiple(midataset.g2)
+  mi.fit.est = mi.est.and.mse[[1]]
+  mi.fit.mse = mi.est.and.mse[[2]]
+  
+  flmg1 = fit_lmer_multiple(midataset.g1)
+  linear.estimates.g1[m,'mi',c('intercept','estimate')] = flmg1[[1]]
+  linear.estimates.g1[m, 'mi',c('mse')] = flmg1[[2]]
+  
+  fleg1 = fit_lmer(cvdataset.g1)
+  
+  linear.estimates.g1[m,'cv',c('intercept','estimate')] = lme4::fixef(fleg1[[1]])
+  linear.estimates.g1[m,'cv',c('mse')] = fleg1[[2]]
+  
+  flmg2 = fit_lmer_multiple(midataset.g2)
+  linear.estimates.g2[m,'mi',c('intercept','estimate')] = flmg2[[1]]
+  linear.estimates.g2[m, 'mi',c('mse')] = flmg2[[2]]
+  
+  fleg2 = fit_lmer(cvdataset.g2)
+  
+  linear.estimates.g2[m,'cv',c('intercept','estimate')] = lme4::fixef(fleg2[[1]])
+  linear.estimates.g2[m,'cv',c('mse')] = fleg2[[2]]
+  
+  
+  lvcfdataset.g1.new=as.data.frame(lvcfdataset.g1[1])
+  
+  lvcfdataset.g2.new=as.data.frame(lvcfdataset.g2[1])
+  lvcf.all = rbind(lvcfdataset.g1.new, lvcfdataset.g2.new)
+  
+  
+  maxcol.cc =  min(c(ncol(ccdataset.g1), ncol(ccdataset.g2)))
+  cc.all = rbind(as.data.frame(ccdataset.g1[,1:maxcol.cc]), as.data.frame(ccdataset.g2[,1:maxcol.cc]))
+  maxcol = min(c(ncol(cvdataset.g1), ncol(cvdataset.g2)))
+  cv.all = rbind(as.data.frame(cvdataset.g1[,1:maxcol]), as.data.frame(cvdataset.g2[,1:maxcol]))
+  idx=1
+  for (df in list(lvcf.all, cc.all,cv.all)){
+    main.analysis.gp.diff[m,idx] = get_main_analysis(df)[[2]][1]$coefficients[1]
+    idx=idx+1
+    #print(df)
+  }
+  
+  for(imputation in 1:max(midataset.g1$imputation)){
+    colcount = min(c(ncol(midataset.g1), ncol(midataset.g2)))
+    mi.all = rbind(midataset.g1[midataset.g1$imputation==imputation,1:colcount], midataset.g2[midataset.g2$imputation==imputation,1:colcount])
+    main.analysis.gp.diff[m, idx] = get_main_analysis(mi.all[,-c(1,2)])[[2]][1]$coefficients[1]
+  }
+  
+  dput(mean.bias.g1, "mean.bias.g1.txt")
+  dput(mean.bias.g2, "mean.bias.g2.txt")
+  dput(pointwise.bias.g1, "pointwise.bias.g1.txt")
+  dput(pointwise.bias.g2, "pointwise.bias.g2.txt")
+  dput(linear.estimates.g1, "linear.estimates.g1.txt")
+  dput(linear.estimates.g2,"linear.estimates.g2.txt")
+  dput(main.analysis.gp.diff, "main.analysis.gp.diff.txt")
+  
+  cat(m, file="simulation_iteration.txt")
+  
+}
+
+aggregate= function(df, M=1000){
+  out = apply(df,c(2,3), sum, na.rm=T)/M
+  out
+}
+
+#main.analysis.gp.diff
+cat("Pointwise bias: group 1")
+aggregate(pointwise.bias.g1)
+cat("Pointwise bias: group 2")
+aggregate(pointwise.bias.g2)
+
+cat("Mean bias: group 1")
+aggregate(mean.bias.g1)
+cat("Mean bias: group 2")
+aggregate(mean.bias.g2)
+
+cat("linear estimates: group 1")
+aggregate(linear.estimates.g1)
+cat("linear estimates: group 2")
+aggregate(linear.estimates.g2)
+
+cat("\n group results")
+colMeans(main.analysis.gp.diff, na.rm=T)
