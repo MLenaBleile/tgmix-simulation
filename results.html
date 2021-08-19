@@ -420,53 +420,53 @@ summary {
 <p>For the complete-case dataset, we computed the bias on the means for each group rather than the individual data points, because the complete-case analysis deletes subjects rather than simulating new points. For each of the 1,000 simulated datasets, we computed time point means using CC, and compared them to the corresponding means of the true, uncensored dataset.</p>
 <pre class="r"><code>mean.bias.g1 = dget(&quot;mean.bias.g1.txt&quot;)
 apply(mean.bias.g1, c(2,3), mean, na.rm=T)</code></pre>
-<pre><code>##         Day 0      Day 4       Day 8     Day 12     Day 16     Day 20
-## mi  0.0000000  0.0000000 -0.02973015 -0.1266474 -0.3583008 -0.6164748
-## cc -0.8318849 -0.9250337 -0.91849192 -0.9297482 -0.9976444 -1.2159300
-##        Day 24     Day 28    Day 32    Day 36    Day 40
-## mi -0.7716223 -0.7832648 -1.081734 -0.930954 -0.764749
-## cc -1.2623631 -1.3787880 -1.926885 -1.830352 -1.789132</code></pre>
+<pre><code>##         Day 0     Day 4       Day 8     Day 12     Day 16     Day 20     Day 24
+## mi  0.0000000  0.000000 -0.02577554 -0.1179058 -0.3496842 -0.6249822 -0.7625636
+## cc -0.8461871 -0.895769 -0.91097636 -0.9127936 -0.9482789 -1.2181882 -1.2629280
+##        Day 28    Day 32    Day 36     Day 40
+## mi -0.8881556 -1.151389 -1.298856 -0.5775394
+## cc -1.4971148 -2.005162 -2.485815 -1.6656924</code></pre>
 <pre class="r"><code>mean.bias.g2 = dget(&quot;mean.bias.g2.txt&quot;)
 apply(mean.bias.g2[,,1:8], c(2,3), mean, na.rm=T)</code></pre>
-<pre><code>##         Day 0      Day 4       Day 8    Day 12     Day 16     Day 20    Day 24
-## mi  0.0000000  0.0000000 -0.05323052 -0.299945 -0.6469296 -0.8896056 -1.099164
-## cc -0.7739083 -0.8540091 -0.83484262 -1.080728 -1.1356312 -1.3620035 -1.889837
-##        Day 28
-## mi -0.6403801
-## cc -1.7867224</code></pre>
+<pre><code>##         Day 0      Day 4       Day 8     Day 12     Day 16     Day 20    Day 24
+## mi  0.0000000  0.0000000 -0.04907873 -0.2924401 -0.6390923 -0.9005671 -1.057855
+## cc -0.7936006 -0.8420163 -0.86394631 -1.0803594 -1.1306312 -1.3641369 -1.898568
+##       Day 28
+## mi -1.490626
+## cc -2.637085</code></pre>
 <p>We calculated bias of prediction on the LVCF- and MI-completed data sets by subtracting the true, latent values that were synthetically censored by dropout from the imputed values.</p>
 <pre class="r"><code>pointwise.bias.g1 = dget(&quot;pointwise.bias.g1.txt&quot;)
 apply(pointwise.bias.g1, c(2,3), mean, na.rm=T)</code></pre>
-<pre><code>##      Day 0 Day 4         Day 8      Day 12     Day 16     Day 20     Day 24
-## mi       0     0 -0.0297301495 -0.12664739 -0.3583008 -0.6164748 -0.7716223
-## lvcf     0     0 -0.0008779538 -0.02614208 -0.1244388 -0.4379602 -1.0864924
-##          Day 28    Day 32    Day 36    Day 40
-## mi   -0.7832648 -1.081734 -0.930954 -0.764749
-## lvcf -1.9048495 -2.906009 -3.920200 -4.944080</code></pre>
+<pre><code>##      Day 0 Day 4        Day 8      Day 12     Day 16     Day 20     Day 24
+## mi       0     0 -0.025775536 -0.11790581 -0.3496842 -0.6249822 -0.7625636
+## lvcf     0     0 -0.001139931 -0.02197403 -0.1214982 -0.4453524 -1.0749130
+##          Day 28    Day 32    Day 36     Day 40
+## mi   -0.8881556 -1.151389 -1.298856 -0.5775394
+## lvcf -1.9344519 -2.894119 -3.924608 -4.9349155</code></pre>
 <pre class="r"><code>pointwise.bias.g2 = dget(&quot;pointwise.bias.g2.txt&quot;)
 apply(pointwise.bias.g2[,,1:8], c(2,3), mean, na.rm=T)</code></pre>
 <pre><code>##      Day 0 Day 4        Day 8     Day 12     Day 16     Day 20    Day 24
-## mi       0     0 -0.053230522 -0.2999450 -0.6469296 -0.8896056 -1.099164
-## lvcf     0     0 -0.007419717 -0.1347127 -0.6860907 -1.8207834 -3.217461
-##          Day 28
-## mi   -0.6403801
-## lvcf -4.6320216</code></pre>
+## mi       0     0 -0.049078733 -0.2924401 -0.6390923 -0.9005671 -1.057855
+## lvcf     0     0 -0.008241886 -0.1377232 -0.6905477 -1.8389194 -3.205413
+##         Day 28
+## mi   -1.490626
+## lvcf -4.633273</code></pre>
 <p>Recall that the data were generated from a linear mixed model (log scale) with a random effect for Animal. The true intercept is 5. The true coefficient (effect) on group 1 is 0.25, and the true effect in group 2 is 0.35.</p>
 <pre class="r"><code>linear.estimates.g1= dget(&quot;linear.estimates.g1.txt&quot;)
 apply(linear.estimates.g1[,,],c(2,3),mean, na.rm=T)</code></pre>
-<pre><code>##    intercept  estimate      mse
-## mi  5.108774 0.2202462 1.233806
-## cv  4.991940 0.2535998 0.851571</code></pre>
+<pre><code>##    intercept  estimate       mse
+## mi  5.121399 0.2192414 1.2295977
+## cv  4.993018 0.2540667 0.8546689</code></pre>
 <pre class="r"><code>linear.estimates.g2 = dget(&quot;linear.estimates.g2.txt&quot;)
 apply(linear.estimates.g2[,,],c(2,3),mean, na.rm=T)</code></pre>
 <pre><code>##    intercept  estimate       mse
-## mi  5.129622 0.3080919 1.2130178
-## cv  4.984252 0.3591943 0.8427798</code></pre>
+## mi  5.121045 0.3099858 1.2052643
+## cv  4.974495 0.3610519 0.8358847</code></pre>
 <p>Finally, we performed the main analysis using each method to compare the differences. We are interested in the difference in effects between the two groups, which we are estimating using an ANOVA model. I recorded the main effect for each simulation iteration. As you can see the results using each method look very different from one another.</p>
 <pre class="r"><code>main.analysis.gp.diff= dget(&quot;main.analysis.gp.diff.txt&quot;)
 apply(main.analysis.gp.diff,2,mean, na.rm=T)</code></pre>
 <pre><code>##      lvcf        cc        cv        mi 
-## 0.4193701 0.9156326 0.4673353 0.8130565</code></pre>
+## 0.4189438 0.8942786 0.4662026 0.8064599</code></pre>
 </div>
 
 
