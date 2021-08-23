@@ -320,29 +320,44 @@ fit_lmer = function(cvdataset.g1){
   
   cv.fit.g1 = lme4::lmer(Value ~ Day+ (1| Animal), data=cv_long.g1)
   mse = merTools::RMSE.merMod(cv.fit.g1)
-  list(cv.fit.g1, mse)}
+  parameter_mse = sqrt(diag(vcov(cv.fit.g1)))
+  output=list(cv.fit.g1, mse, parameter_mse)
+  names(output) = c("Main effects", "Model MSE","Parameter MSE")
+  output}
 
 fit_lmer_multiple = function(midataset.g1){
   for(imputation in 1:max(midataset.g1$imputation)){
     one.mi.dataset = midataset.g1[midataset.g1$imputation==imputation,]
     #print(imputation)
     if(imputation==1){
-      effects = as.numeric(lme4::fixef(fit_lmer(one.mi.dataset[,-c(1,2)])[[1]]))
-      mse = fit_lmer(one.mi.dataset[,-c(1,2)])[[2]]}
+      fit = fit_lmer(one.mi.dataset[,-c(1,2)])
+      effects = as.numeric(lme4::fixef(fit$`Main effects`))
+      
+      mse = fit$`Model MSE`
+      parameter_mse = fit$`Parameter MSE` }
     else{
-      new_effects = lme4::fixef(fit_lmer(one.mi.dataset[,-c(1,2)])[[1]])
+      fit = fit_lmer(one.mi.dataset[,-c(1,2)])
+      new_effects = lme4::fixef(fit[[1]])
       effects[1] = effects[1] + as.numeric(new_effects)[1]
       effects[2] = effects[2] + as.numeric(new_effects)[2]
       #cat(new_effects[2],effects[2], new_effects[2]+effects[2])
-      new_mse = fit_lmer(one.mi.dataset[,-c(1,2)])[[2]]
+      new_mse = fit$`Model MSE`
       #print(new_mse)
       mse = mse + new_mse
+      
+      new_parameter_mse = fit$`Parameter MSE`
+      parameter_mse = new_parameter_mse+parameter_mse
     }
     
   }
-  effects=effects/max(midataset.g1$imputation)
-  mse = mse/max(midataset.g1$imputation)
-  list(effects, mse)}
+  num_imputations = max(midataset.g1$imputation)
+  effects=effects/num_imputations
+  mse = mse/num_imputations
+  parameter_mse = parameter_mse/num_imputations
+  output=list(effects, mse, parameter_mse)
+  names(output) = names(fit)
+  output
+  }
 
 
 

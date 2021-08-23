@@ -26,8 +26,8 @@ pointwise.bias.g1 = array(dim=c(M, 2, TotalTime), dimnames=list(NULL, c("mi","lv
 pointwise.bias.g2 = array(dim=c(M, 2, TotalTime), dimnames=list(NULL, c("mi","lvcf"), paste("Day",time)))
 mean.bias.g1 =array(dim=c(M, 2, TotalTime), dimnames=list(NULL, c("mi","cc"), paste("Day",time)))
 mean.bias.g2 = array(dim=c(M, 2, TotalTime), dimnames=list(NULL, c("mi","cc"), paste("Day",time)))
-linear.estimates.g1 = array(dim=c(M, 2, 3), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "mse")))
-linear.estimates.g2 = array(dim=c(M, 2, 3), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "mse")))
+linear.estimates.g1 = array(dim=c(M, 2, 5), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "modelmse", 'interceptmse', 'estimatemse')))
+linear.estimates.g2 = array(dim=c(M, 2, 5), dimnames=list(NULL, c("mi","cv"), c("intercept","estimate", "modelmse", 'interceptmse', 'estimatemse')))
 
 main.analysis.gp.diff = data.frame(lvcf=NA, cc=NA, cv=NA, mi=NA)}else if(simulation_iteration >1){
     pointwise.bias.g1 = dget("pointwise.bias.g1.txt")

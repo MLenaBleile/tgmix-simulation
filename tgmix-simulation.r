@@ -9,7 +9,7 @@ source("C:/Users/s198663/Documents/TGM/simulation/generate_simulation.R")
 
 
 
-M=1000
+M=3
 for(m in simulation_iteration:M){
 one.dataset=mouse.sim[m,,]
 beta.v = c(0.1,1,2,-30)
@@ -99,24 +99,29 @@ cv.mse.g2 = fit_lmer(cvdataset.g2)[[2]]
 mi.est.and.mse = fit_lmer_multiple(midataset.g2)
 mi.fit.est = mi.est.and.mse[[1]]
 mi.fit.mse = mi.est.and.mse[[2]]
+mi.fit.param.mse = mi.est.and.mse[[3]]
 
 flmg1 = fit_lmer_multiple(midataset.g1)
 linear.estimates.g1[m,'mi',c('intercept','estimate')] = flmg1[[1]]
-linear.estimates.g1[m, 'mi',c('mse')] = flmg1[[2]]
+linear.estimates.g1[m, 'mi',c('modelmse')] = flmg1[[2]]
+linear.estimate.g1[m, 'mi', c('interceptmse', 'estimatemse')] = flmg1[[3]]
 
 fleg1 = fit_lmer(cvdataset.g1)
 
 linear.estimates.g1[m,'cv',c('intercept','estimate')] = lme4::fixef(fleg1[[1]])
-linear.estimates.g1[m,'cv',c('mse')] = fleg1[[2]]
+linear.estimates.g1[m,'cv',c('modelmse')] = fleg1[[2]]
+linear.estimate.g1[m, 'cv', c('interceptmse', 'estimatemse')] = fleg1[[3]]
 
 flmg2 = fit_lmer_multiple(midataset.g2)
 linear.estimates.g2[m,'mi',c('intercept','estimate')] = flmg2[[1]]
 linear.estimates.g2[m, 'mi',c('mse')] = flmg2[[2]]
+linear.estimate.g2[m, 'mi', c('interceptmse', 'estimatemse')] = flmg2[[3]]
 
 fleg2 = fit_lmer(cvdataset.g2)
 
 linear.estimates.g2[m,'cv',c('intercept','estimate')] = lme4::fixef(fleg2[[1]])
 linear.estimates.g2[m,'cv',c('mse')] = fleg2[[2]]
+linear.estimate.g2[m, 'cv', c('interceptmse', 'estimatemse')] = fleg2[[3]]
 
 
 lvcfdataset.g1.new=as.data.frame(lvcfdataset.g1[1])
